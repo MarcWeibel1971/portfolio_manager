@@ -1,0 +1,48 @@
+# Example configuration for the HFT trading bot stack.
+# Copy to config/config.yaml (gitignored) and adjust. Secrets belong in env vars
+# or a secrets manager — never commit live API keys.
+
+engine:
+  mode: paper          # paper | backtest | live   (live adapters are not bundled)
+  symbol: DEMO
+  starting_cash: 100000
+
+strategy:
+  name: momentum       # momentum | market_making
+  momentum:
+    fast_period: 10
+    slow_period: 30
+    target_position: 50
+  market_making:
+    quote_size: 10
+    spread_bps: 10
+    max_inventory: 100
+    inventory_skew_bps: 5
+
+risk:
+  max_order_quantity: 200
+  max_position: 500
+  max_gross_exposure: 250000
+  max_notional_per_order: 100000
+  max_drawdown: 20000        # halt trading after this much equity loss
+
+execution:
+  commission_rate: 0.0005    # 5 bps per trade
+  slippage_bps: 1.0
+
+data:
+  feed: simulated            # simulated | csv
+  simulated:
+    n_ticks: 5000
+    volatility: 0.0008
+    seed: 42
+  csv:
+    path: data/sample_ticks.csv
+
+# Live exchange credentials (only used by future live adapters).
+# Prefer environment variables: ${EXCHANGE_API_KEY} / ${EXCHANGE_API_SECRET}
+exchange:
+  name: binance
+  api_key: ${EXCHANGE_API_KEY}
+  api_secret: ${EXCHANGE_API_SECRET}
+  testnet: true

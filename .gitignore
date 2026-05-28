@@ -1,0 +1,29 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+build/
+dist/
+.venv/
+venv/
+env/
+
+# Tooling
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Secrets / local config
+config/config.yaml
+config/*.local.yaml
+.env
+*.key
+
+# Data / logs
+data/*.csv
+!data/sample_*.csv
+logs/
+*.log
