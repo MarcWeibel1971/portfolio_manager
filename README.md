@@ -121,11 +121,34 @@ RiskLimits(
     max_gross_exposure=250_000,   # Summe der |Positionsnominale|
     max_notional_per_order=100_000,
     max_drawdown=20_000,          # gesamter Handel stoppt nach diesem Kapitalverlust
-)
+    max_leverage=1.0,             # Buying-Power: Exposure <= Eigenkapital x Hebel
+)                                 #   (1.0 = Cash-Konto ohne Kredit; 3.0 = 3x Hebel)
 ```
 
 Das Drawdown-Limit ist ein harter Schutzschalter: Einmal ausgelöst, stoppt es
 die Strategie für den Rest der Sitzung.
+
+## Historische Daten importieren
+
+`scripts/fetch_data.py` lädt OHLCV-Kerzen einer Börse über `ccxt` und schreibt
+sie direkt im richtigen CSV-Format (Schlusskurs → synthetische Bid/Ask-Ticks):
+
+```bash
+pip install ".[live]"
+python scripts/fetch_data.py --exchange binance --symbol BTC/USDT \
+    --timeframe 1h --limit 1500 --out data/btc_1h.csv
+python scripts/run_backtest.py --strategy momentum --csv data/btc_1h.csv \
+    --symbol BTC/USDT --report report.html
+```
+
+Kein API-Key nötig (öffentliche Marktdaten). Für einen sofortigen Offline-Test
+liegt ein Beispiel-Datensatz bei: `data/sample_btc_1h.csv` (1500 Stundenbars).
+Das CSV-Format hat die Spalten `timestamp,symbol,bid,ask[,last,volume]`, zeitlich
+aufsteigend sortiert.
+
+> **Positionsgröße ans Preisniveau anpassen.** Bei einem 50 000-$-Asset ist
+> `target_position=50` eine 2,5-Mio-$-Position. Größe klein wählen (fraktionale
+> Einheiten) und mit `max_leverage` bzw. `max_notional_per_order` absichern.
 
 ## Backtest-Kennzahlen
 

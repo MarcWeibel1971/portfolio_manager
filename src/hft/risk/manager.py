@@ -21,6 +21,8 @@ class RiskLimits:
     max_gross_exposure: float | None = None  # max sum of |position notional|
     max_notional_per_order: float | None = None  # max value of a single order
     max_drawdown: float | None = None  # halt trading below starting_cash - this
+    max_leverage: float | None = None  # max gross exposure as a multiple of equity
+    #                                    (1.0 ~= a cash account: no borrowing)
 
 
 @dataclass
@@ -91,17 +93,32 @@ class RiskManager:
                 f"projected position {projected_qty} exceeds max {lim.max_position}",
             )
 
-        if lim.max_gross_exposure is not None and price is not None:
-            # Replace this symbol's contribution with the projected one.
+        if (lim.max_gross_exposure is not None or lim.max_leverage is not None) and (
+            price is not None
+        ):
+            # Projected gross exposure: swap this symbol's current contribution
+            # for the post-fill one. Used by both the absolute cap and leverage.
             others = self.portfolio.gross_exposure() - abs(
                 self.portfolio.position(order.symbol).market_value
             )
             projected_gross = others + abs(projected_qty) * price
-            if projected_gross > lim.max_gross_exposure:
+
+            if lim.max_gross_exposure is not None and projected_gross > lim.max_gross_exposure:
                 return RiskDecision(
                     False,
                     f"projected gross exposure {projected_gross:.2f} > "
                     f"max {lim.max_gross_exposure}",
                 )
+
+            if lim.max_leverage is not None:
+                # Buying-power check: cap exposure at a multiple of current equity.
+                equity = self.portfolio.equity
+                allowed = max(0.0, equity) * lim.max_leverage
+                if projected_gross > allowed:
+                    return RiskDecision(
+                        False,
+                        f"projected exposure {projected_gross:.2f} exceeds buying power "
+                        f"{allowed:.2f} (equity {equity:.2f} x {lim.max_leverage} leverage)",
+                    )
 
         return RiskDecision(True)
