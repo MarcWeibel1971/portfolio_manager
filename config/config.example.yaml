@@ -13,6 +13,7 @@ strategy:
     fast_period: 10
     slow_period: 30
     target_position: 50
+    max_order_size: null    # optional: max. Ordergröße; stückelt große Flips
   market_making:
     quote_size: 10
     spread_bps: 10
