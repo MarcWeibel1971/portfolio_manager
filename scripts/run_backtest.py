@@ -46,6 +46,10 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--cash", type=float, default=100_000.0, help="Startkapital")
     parser.add_argument("--csv", type=str, default=None, help="stattdessen diese CSV abspielen")
     parser.add_argument("--max-position", type=float, default=500.0, help="max. Positionsgröße")
+    parser.add_argument(
+        "--report", type=str, default=None,
+        help="HTML-Report in diese Datei schreiben (z. B. report.html)",
+    )
     args = parser.parse_args(argv)
 
     strategy = build_strategy(args.strategy, args.symbol)
@@ -68,6 +72,18 @@ def main(argv: list[str] | None = None) -> int:
     result = bt.run(feed)
     print(f"Strategie: {strategy.name}\n")
     print(result.summary())
+
+    if args.report:
+        from hft.report.html import write_report
+
+        write_report(
+            result,
+            args.report,
+            strategy_name=strategy.name,
+            symbol=args.symbol,
+            fills=bt.engine.fills,
+        )
+        print(f"\nHTML-Report geschrieben: {args.report}")
     return 0
 
 

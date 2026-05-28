@@ -134,6 +134,30 @@ gezahlte Gebühren, Max-Drawdown und eine annualisierte Sharpe-Ratio, dazu die
 vollständige Kapitalkurve. Ergebnisse sind für einen gegebenen
 `SimulatedFeed`-Seed deterministisch.
 
+## HTML-Report (Ergebnisse ansehen)
+
+Jeder Backtest kann einen eigenständigen HTML-Report schreiben – Kennzahlen,
+Kapitalkurve (als Inline-SVG) und Trade-Tabelle. Kein Server, keine zusätzlichen
+Abhängigkeiten, offline im Browser zu öffnen:
+
+```bash
+python scripts/run_backtest.py --strategy momentum --csv data/sample_ticks.csv \
+    --report report.html
+# danach report.html im Browser öffnen
+```
+
+Oder aus Python:
+
+```python
+from hft import Backtester, MomentumStrategy, write_report
+from hft.data.simulated import SimulatedFeed
+
+bt = Backtester(strategy=MomentumStrategy("DEMO"))
+result = bt.run(SimulatedFeed(symbol="DEMO", n_ticks=4000, drift=0.00015))
+write_report(result, "report.html", strategy_name="Momentum", symbol="DEMO",
+             fills=bt.engine.fills)
+```
+
 ## Live-Trading
 
 Der Live-Adapter (`hft.execution.live`) implementiert dasselbe `Broker`-
