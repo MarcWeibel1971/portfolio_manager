@@ -1,72 +1,75 @@
-# HFT Trading Bot Stack
+# HFT-Trading-Bot-Stack
 
-An event-driven algorithmic / high-frequency trading bot stack in Python. It is
-built around a single tick → strategy → risk → execution → portfolio pipeline so
-that **the same strategy code runs unchanged in backtest, paper, and (future)
-live trading**.
+Ein ereignisgesteuerter algorithmischer / Hochfrequenzhandels-Stack (HFT) in
+Python. Er ist um eine einzige Pipeline herum gebaut –
+`Tick → Strategie → Risiko → Ausführung → Portfolio` – sodass **derselbe
+Strategiecode unverändert in Backtest, Paper-Trading und (echtem) Live-Handel
+läuft**.
 
-> ⚠️ **Safe by default.** The bundled execution venue is a *paper broker* that
-> simulates fills locally. No real exchange is ever contacted and no credentials
-> are required. There is intentionally **no live-trading adapter included** —
-> wiring one in is an explicit, opt-in step you take yourself (see
-> [Going live](#going-live)). Trading carries real financial risk; nothing here
-> is financial advice.
+> ⚠️ **Standardmäßig sicher.** Die voreingestellte Ausführung ist ein
+> *Paper-Broker*, der Fills lokal simuliert – keine Börse, keine Zugangsdaten,
+> kein Risiko. Ein **Live-Adapter** ist enthalten (`hft.execution.live`), aber
+> mehrfach verriegelt: Er sendet nur echte Orders, wenn `confirm_live=True`
+> gesetzt ist, und verbindet sich nur mit dem Mainnet, wenn zusätzlich
+> `allow_mainnet=True` gesetzt wird. Handel birgt reale finanzielle Risiken;
+> nichts hiervon ist eine Anlageberatung.
 
-## Architecture
+## Architektur
 
 ```
-            ┌──────────────┐   ticks    ┌───────────────┐
-  feed ───► │ TradingEngine │ ─────────► │   Strategy    │
-            │  (event loop) │ ◄───order  │ (decisions)   │
-            └──────┬────────┘   intents  └───────────────┘
-                   │  order (risk-checked)
+            ┌───────────────┐   Ticks    ┌───────────────┐
+  Feed ───► │ TradingEngine │ ─────────► │   Strategie   │
+            │ (Event-Loop)  │ ◄──Order-  │ (Entscheidung)│
+            └──────┬────────┘   absicht  └───────────────┘
+                   │  Order (risikogeprüft)
                    ▼
-            ┌──────────────┐   fills    ┌───────────────┐
-            │   Broker     │ ─────────► │   Portfolio   │
-            │ (PaperBroker)│            │ (positions/PnL)│
-            └──────────────┘            └───────────────┘
-                   ▲ pre-trade checks
-            ┌──────┴───────┐
-            │ RiskManager  │
-            └──────────────┘
+            ┌───────────────┐   Fills    ┌───────────────┐
+            │    Broker     │ ─────────► │   Portfolio   │
+            │ Paper / Live  │            │ (Pos. & G/V)  │
+            └───────────────┘            └───────────────┘
+                   ▲ Vorhandelsprüfung
+            ┌──────┴────────┐
+            │  RiskManager  │
+            └───────────────┘
 ```
 
-| Layer | Module | Responsibility |
-|-------|--------|----------------|
-| Core types | `hft.core.types` | `Tick`, `Order`, `Fill`, `Side`, enums |
-| Data feeds | `hft.data` | `SimulatedFeed` (random walk), `CsvFeed` (replay) |
-| Strategies | `hft.strategy` | `Strategy` base + `MomentumStrategy`, `MarketMakingStrategy` |
-| Risk | `hft.risk` | `RiskManager` + `RiskLimits` pre-trade checks |
-| Execution | `hft.execution` | `Broker` interface + `PaperBroker` simulator |
-| Portfolio | `hft.portfolio` | Position, cash and P&L bookkeeping |
-| Engine | `hft.engine` | The event loop tying it all together |
-| Backtest | `hft.backtest` | `Backtester` + metrics (`return`, `Sharpe`, `max drawdown`) |
+| Schicht | Modul | Aufgabe |
+|---------|-------|---------|
+| Kerntypen | `hft.core.types` | `Tick`, `Order`, `Fill`, `Side`, Enums |
+| Datenfeeds | `hft.data` | `SimulatedFeed` (Random Walk), `CsvFeed` (Wiedergabe) |
+| Strategien | `hft.strategy` | `Strategy`-Basis + `MomentumStrategy`, `MarketMakingStrategy` |
+| Risiko | `hft.risk` | `RiskManager` + `RiskLimits` (Vorhandelsprüfungen) |
+| Ausführung | `hft.execution` | `Broker`-Interface, `PaperBroker`, `LiveBroker` (ccxt) |
+| Portfolio | `hft.portfolio` | Positions-, Kassenbestands- und G/V-Buchhaltung |
+| Engine | `hft.engine` | Der Event-Loop, der alles verbindet |
+| Backtest | `hft.backtest` | `Backtester` + Kennzahlen (Rendite, Sharpe, Max-Drawdown) |
 
-## Install
+## Installation
 
 ```bash
 python -m venv .venv && source .venv/bin/activate
-pip install -e ".[dev]"      # editable install with test deps
+pip install -e ".[dev]"      # editierbare Installation inkl. Test-Abhängigkeiten
+pip install -e ".[live]"     # zusätzlich: ccxt für echte Börsenanbindung
 ```
 
-The only runtime dependency is `PyYAML`. Python 3.10+ is required.
+Die einzige Laufzeitabhängigkeit ist `PyYAML`. Python 3.10+ wird benötigt.
 
-## Quick start
+## Schnellstart
 
-Run a backtest from the CLI:
+Backtest über die Kommandozeile:
 
 ```bash
-# Momentum (EMA crossover) on a reproducible synthetic random walk
+# Momentum (EMA-Crossover) auf einem reproduzierbaren synthetischen Random Walk
 python scripts/run_backtest.py --strategy momentum --ticks 5000 --volatility 0.002
 
-# Market maker on the same engine
+# Market Maker auf derselben Engine
 python scripts/run_backtest.py --strategy market_making --ticks 5000
 
-# Replay a recorded CSV (columns: timestamp,symbol,bid,ask[,last,volume])
+# Eine aufgezeichnete CSV abspielen (Spalten: timestamp,symbol,bid,ask[,last,volume])
 python scripts/run_backtest.py --strategy momentum --csv data/sample_ticks.csv
 ```
 
-Or from Python:
+Oder aus Python:
 
 ```python
 from hft import Backtester, MomentumStrategy, RiskLimits, SimulatedFeed
@@ -80,10 +83,11 @@ result = bt.run(SimulatedFeed(symbol="BTCUSD", n_ticks=5000, volatility=0.002))
 print(result.summary())
 ```
 
-## Writing a strategy
+## Eine Strategie schreiben
 
-Subclass `Strategy` and implement `on_tick`. Submit orders through the
-`StrategyContext` — never touch the broker directly, so risk checks always apply:
+`Strategy` ableiten und `on_tick` implementieren. Orders werden über den
+`StrategyContext` abgegeben – niemals direkt über den Broker, damit die
+Risikoprüfungen immer greifen:
 
 ```python
 from hft.core.types import Side, Tick
@@ -105,74 +109,99 @@ class BuyTheDip(Strategy):
 
 Hooks: `on_start`, `on_tick`, `on_fill`, `on_stop`.
 
-## Risk management
+## Risikomanagement
 
-Every order is validated by `RiskManager.check` before it reaches the broker.
-Limits are opt-in (`None` disables a check):
+Jede Order wird vor dem Broker durch `RiskManager.check` validiert. Limits sind
+optional (`None` deaktiviert eine Prüfung):
 
 ```python
 RiskLimits(
-    max_order_quantity=200,       # units per order
-    max_position=500,             # absolute units per symbol
-    max_gross_exposure=250_000,   # sum of |position notional|
+    max_order_quantity=200,       # Einheiten pro Order
+    max_position=500,             # absolute Einheiten je Symbol
+    max_gross_exposure=250_000,   # Summe der |Positionsnominale|
     max_notional_per_order=100_000,
-    max_drawdown=20_000,          # halt all trading after this much equity loss
+    max_drawdown=20_000,          # gesamter Handel stoppt nach diesem Kapitalverlust
 )
 ```
 
-The drawdown limit is a hard circuit breaker: once tripped it halts the strategy
-for the rest of the session.
+Das Drawdown-Limit ist ein harter Schutzschalter: Einmal ausgelöst, stoppt es
+die Strategie für den Rest der Sitzung.
 
-## Backtest metrics
+## Backtest-Kennzahlen
 
-`BacktestResult` reports total return, realized/unrealized P&L, commission paid,
-max drawdown, and an annualised Sharpe ratio, plus the full equity curve for
-plotting. Results are deterministic for a given `SimulatedFeed` seed.
+`BacktestResult` liefert Gesamtrendite, realisierten/unrealisierten G/V,
+gezahlte Gebühren, Max-Drawdown und eine annualisierte Sharpe-Ratio, dazu die
+vollständige Kapitalkurve. Ergebnisse sind für einen gegebenen
+`SimulatedFeed`-Seed deterministisch.
 
-## Configuration
+## Live-Trading
 
-`config/config.example.yaml` documents every tunable knob. Copy it to
-`config/config.yaml` (gitignored) for local use. **Never commit API keys** — the
-example references them via environment variables.
+Der Live-Adapter (`hft.execution.live`) implementiert dasselbe `Broker`-
+Interface wie der Paper-Broker, sodass **kein** Strategie- oder Risikocode
+geändert werden muss. Er nutzt [`ccxt`](https://github.com/ccxt/ccxt) und
+unterstützt damit viele Krypto-Börsen (Binance, Kraken, Coinbase …).
 
-## Testing
+```python
+from hft import LiveBroker, MomentumStrategy, Portfolio, RiskLimits, RiskManager
+from hft.engine import TradingEngine
+from hft.execution.live import CcxtExchangeClient
 
-```bash
-pytest            # 29 tests covering types, portfolio, risk, broker, backtest
-ruff check src    # lint
+# 1. Börsen-Client – standardmäßig Testnet.
+client = CcxtExchangeClient(
+    "binance",
+    api_key="…",            # besser: aus Umgebungsvariablen lesen
+    api_secret="…",
+    testnet=True,           # für echtes Geld: testnet=False UND allow_mainnet=True
+)
+
+# 2. Live-Broker – verlangt eine bewusste Bestätigung.
+broker = LiveBroker(client, confirm_live=True)
+
+# 3. Restlicher Stack identisch zum Backtest.
+portfolio = Portfolio(starting_cash=10_000)
+risk = RiskManager(RiskLimits(max_position=1, max_notional_per_order=100), portfolio)
+engine = TradingEngine(MomentumStrategy("BTC/USDT"), broker, portfolio, risk)
 ```
 
-## Going live
+**Sicherheitsmechanismen:**
 
-Live trading is deliberately **not** included. To add it:
+1. `LiveBroker` startet nur mit `confirm_live=True`.
+2. `CcxtExchangeClient` verbindet sich nur mit dem Testnet, außer
+   `allow_mainnet=True` ist gesetzt.
+3. Börsenfehler beim Senden/Stornieren töten die Engine nicht – die Order wird
+   abgelehnt bzw. die Stornierung schlägt sauber fehl.
 
-1. Implement the `hft.execution.broker.Broker` interface against your exchange
-   (e.g. with `ccxt` for crypto or a brokerage SDK for equities).
-2. Translate the venue's fill/ack messages into `Fill` objects and call
-   `_emit_fill`.
-3. Swap that broker into `TradingEngine` in place of `PaperBroker`.
+Fills werden bei der Auftragserteilung und danach bei jedem Tick (Polling
+offener Orders über `fetch_order`) inkrementell abgeglichen, sodass auch
+Teilausführungen korrekt verbucht werden.
 
-Because strategies and risk checks are venue-agnostic, no strategy code changes.
-**Test extensively on a testnet/paper account first, start with tiny size, and
-keep `RiskLimits` tight.**
+> **Erst im Testnet testen, mit kleinstem Volumen starten und `RiskLimits` eng
+> halten.** Echte Orders bedeuten echtes Geld.
 
-## Project layout
+## Tests
+
+```bash
+pytest            # Tests für Typen, Portfolio, Risiko, Broker, Live-Adapter, Backtest
+ruff check src    # Linting
+```
+
+## Projektstruktur
 
 ```
 src/hft/
-  core/        domain types (Tick, Order, Fill, Side)
-  data/        market data feeds (simulated, CSV)
-  strategy/    strategy base class + examples
-  risk/        pre-trade risk manager
-  execution/   broker interface + paper broker
-  portfolio/   position & PnL tracking
-  backtest/    backtesting harness + metrics
-  engine.py    the event loop
-scripts/       CLI entry points
-tests/         pytest suite
-config/        example configuration
+  core/        Domänentypen (Tick, Order, Fill, Side)
+  data/        Marktdatenfeeds (simuliert, CSV)
+  strategy/    Strategie-Basisklasse + Beispiele
+  risk/        Vorhandels-Risikomanager
+  execution/   Broker-Interface + Paper- und Live-Broker
+  portfolio/   Positions- und G/V-Verfolgung
+  backtest/    Backtest-Harness + Kennzahlen
+  engine.py    der Event-Loop
+scripts/       CLI-Einstiegspunkte
+tests/         pytest-Suite
+config/        Beispielkonfiguration
 ```
 
-## License
+## Lizenz
 
 MIT

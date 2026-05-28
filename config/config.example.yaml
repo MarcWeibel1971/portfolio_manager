@@ -1,9 +1,9 @@
-# Example configuration for the HFT trading bot stack.
-# Copy to config/config.yaml (gitignored) and adjust. Secrets belong in env vars
-# or a secrets manager — never commit live API keys.
+# Beispielkonfiguration für den HFT-Trading-Bot-Stack.
+# Nach config/config.yaml kopieren (gitignored) und anpassen. Geheimnisse gehören
+# in Umgebungsvariablen oder einen Secrets-Manager — niemals echte API-Keys committen.
 
 engine:
-  mode: paper          # paper | backtest | live   (live adapters are not bundled)
+  mode: paper          # paper | backtest | live   (Live sendet ECHTE Orders)
   symbol: DEMO
   starting_cash: 100000
 
@@ -24,10 +24,10 @@ risk:
   max_position: 500
   max_gross_exposure: 250000
   max_notional_per_order: 100000
-  max_drawdown: 20000        # halt trading after this much equity loss
+  max_drawdown: 20000        # Handel stoppen, sobald so viel Kapital verloren ist
 
 execution:
-  commission_rate: 0.0005    # 5 bps per trade
+  commission_rate: 0.0005    # 5 Basispunkte pro Trade
   slippage_bps: 1.0
 
 data:
@@ -39,10 +39,11 @@ data:
   csv:
     path: data/sample_ticks.csv
 
-# Live exchange credentials (only used by future live adapters).
-# Prefer environment variables: ${EXCHANGE_API_KEY} / ${EXCHANGE_API_SECRET}
+# Live-Trading: echte Börsenanbindung über ccxt (pip install ".[live]").
+# ACHTUNG — ECHTES GELD. Erst im Testnet testen, dann mit kleinem Volumen starten.
+# Zugangsdaten ausschließlich über Umgebungsvariablen setzen.
 exchange:
   name: binance
   api_key: ${EXCHANGE_API_KEY}
   api_secret: ${EXCHANGE_API_SECRET}
-  testnet: true
+  testnet: true              # auf false nur mit allow_mainnet=True im Code

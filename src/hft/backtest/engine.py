@@ -72,19 +72,19 @@ class BacktestResult:
 
     def summary(self) -> str:
         lines = [
-            "Backtest summary",
-            "================",
-            f"  Ticks processed : {self.n_ticks}",
-            f"  Fills           : {self.n_fills}",
-            f"  Rejected orders : {self.n_rejected}",
-            f"  Starting equity : {self.starting_equity:,.2f}",
-            f"  Ending equity   : {self.ending_equity:,.2f}",
-            f"  Total return    : {self.total_return * 100:.2f}%",
-            f"  Realized PnL    : {self.realized_pnl:,.2f}",
-            f"  Unrealized PnL  : {self.unrealized_pnl:,.2f}",
-            f"  Commission paid : {self.total_commission:,.2f}",
-            f"  Max drawdown    : {self.max_drawdown * 100:.2f}%",
-            f"  Sharpe (annual) : {self.sharpe():.2f}",
+            "Backtest-Zusammenfassung",
+            "========================",
+            f"  Verarbeitete Ticks   : {self.n_ticks}",
+            f"  Ausführungen (Fills) : {self.n_fills}",
+            f"  Abgelehnte Orders    : {self.n_rejected}",
+            f"  Startkapital         : {self.starting_equity:,.2f}",
+            f"  Endkapital           : {self.ending_equity:,.2f}",
+            f"  Gesamtrendite        : {self.total_return * 100:.2f}%",
+            f"  Realisierter G/V     : {self.realized_pnl:,.2f}",
+            f"  Unrealisierter G/V   : {self.unrealized_pnl:,.2f}",
+            f"  Gezahlte Gebühren    : {self.total_commission:,.2f}",
+            f"  Max. Drawdown        : {self.max_drawdown * 100:.2f}%",
+            f"  Sharpe (annualis.)   : {self.sharpe():.2f}",
         ]
         return "\n".join(lines)
 
