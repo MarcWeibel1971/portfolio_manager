@@ -27,3 +27,7 @@ data/*.csv
 !data/sample_*.csv
 logs/
 *.log
+
+# Generierte Reports
+report*.html
+*.report.html

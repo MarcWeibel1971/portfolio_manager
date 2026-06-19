@@ -46,6 +46,36 @@ def test_gross_exposure_limit():
     assert not rm.check(order(qty=10), market_price=100.0)
 
 
+def test_max_leverage_caps_buying_power():
+    # 100k equity, leverage 1.0 -> can't take more than 100k of exposure.
+    pf, rm = make(RiskLimits(max_leverage=1.0))
+    # 500 units @ 100 = 50k -> within buying power.
+    assert rm.check(order(qty=500), market_price=100.0)
+    # 1500 units @ 100 = 150k -> exceeds 100k buying power.
+    decision = rm.check(order(qty=1500), market_price=100.0)
+    assert not decision
+    assert "buying power" in decision.reason
+
+
+def test_max_leverage_allows_borrowing_above_one():
+    pf, rm = make(RiskLimits(max_leverage=3.0))
+    # 100k equity x3 = 300k allowed; 2500 units @ 100 = 250k -> ok.
+    assert rm.check(order(qty=2500), market_price=100.0)
+    # 3500 units @ 100 = 350k -> over 300k.
+    assert not rm.check(order(qty=3500), market_price=100.0)
+
+
+def test_max_leverage_uses_live_equity():
+    pf, rm = make(RiskLimits(max_leverage=1.0))
+    # Drain equity via a realized loss, buying power shrinks accordingly.
+    pf.apply_fill(Fill(order_id=1, symbol="Y", side=Side.BUY, quantity=10, price=100.0))
+    pf.apply_fill(Fill(order_id=2, symbol="Y", side=Side.SELL, quantity=10, price=50.0))
+    # Equity now ~95k (lost 500). 10 units Y closed; check a new symbol order.
+    assert pf.equity < 100_000
+    # 1000 @ 100 = 100k now exceeds reduced buying power.
+    assert not rm.check(order(qty=1000, symbol="X"), market_price=100.0)
+
+
 def test_drawdown_halts_trading():
     pf, rm = make(RiskLimits(max_drawdown=1_000))
     # Force equity down by 1500 via a marked loss.
